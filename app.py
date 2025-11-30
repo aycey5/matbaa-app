@@ -38,7 +38,7 @@ with st.sidebar:
     euro_kur = st.number_input("Euro (€)", value=oto_eur, step=0.01)
     sterlin_kur = st.number_input("Sterlin (£)", value=oto_gbp, step=0.01)
 
-st.title("🖨️ Matbaa Maliyet & Lojistik (V14)")
+st.title("🖨️ Matbaa Maliyet & Lojistik (V17)")
 st.markdown("---")
 
 # ==========================================
@@ -56,8 +56,8 @@ st.markdown("---")
 st.header("🚀 Üretim Planlama")
 p1, p2, p3, p4 = st.columns(4)
 with p1: siparis_adedi = st.number_input("Sipariş Adedi", value=50000, step=1000)
-with p2: verimlilik = st.number_input("Verimlilik (Tabakadan Çıkan)", value=2, min_value=1)
-with p3: fire_yuzde = st.number_input("Fire Oranı (%)", value=3.0, step=0.5)
+with p2: verimlilik = st.number_input("Verimlilik", value=2, min_value=1)
+with p3: fire_yuzde = st.number_input("Fire (%)", value=3.0, step=0.5)
 
 net_tabaka = math.ceil(siparis_adedi / verimlilik)
 fire_miktari = math.ceil(net_tabaka * (fire_yuzde / 100))
@@ -78,7 +78,7 @@ with k1:
     kagit_boy = st.number_input("Kağıt Boy", value=100.0)
     gramaj = st.number_input("Gramaj", value=350)
 with k2:
-    kagit_brut = st.number_input("Kağıt Brüt (Tedarik)", value=baski_brut)
+    kagit_brut = st.number_input("Kağıt Brüt", value=baski_brut)
 with k3:
     kur_sec = st.selectbox("Kağıt Kuru", ["DOLAR", "EURO", "TL"])
     kag_fiyat = st.number_input("Kağıt Birim Fiyat", value=800.0)
@@ -100,9 +100,9 @@ st.markdown("---")
 # ==========================================
 st.header("2. Baskı Hesabı")
 col_grafik, col_ebat1, col_ebat2 = st.columns([1, 1, 1])
-with col_grafik: grafik_sayisi = st.number_input("Grafik Çeşit Sayısı", value=1, min_value=1)
-with col_ebat1: b_en = st.number_input("Baskı Ebadı En", value=70.0)
-with col_ebat2: b_boy = st.number_input("Baskı Ebadı Boy", value=100.0)
+with col_grafik: grafik_sayisi = st.number_input("Çeşit Sayısı", value=1, min_value=1)
+with col_ebat1: b_en = st.number_input("Baskı En", value=70.0)
+with col_ebat2: b_boy = st.number_input("Baskı Boy", value=100.0)
 
 def setup_hesap(var, kalip, tip):
     if var == "HAYIR": return 0
@@ -123,7 +123,7 @@ with col_k:
     st.subheader("🟫 Karton Baskı")
     e_on = st.selectbox("Ön Baskı", ["HAYIR", "EVET"], index=1)
     e_arka = st.selectbox("Arka Baskı", ["HAYIR", "EVET"], index=0)
-    e_boya = st.selectbox("Boya Türü", ["CMYK", "PANTONE"])
+    e_boya = st.selectbox("Boya", ["CMYK", "PANTONE"])
     e_kalip_on = st.number_input("Ön Kalıp Adet", value=4)
     e_kalip_arka = st.number_input("Arka Kalıp Adet", value=0)
     e_ver = st.selectbox("Vernik", ["HAYIR", "EVET"], key="ev")
@@ -136,11 +136,13 @@ with col_k:
     e_set = (setup_hesap(e_on, e_kalip_on, "KARTON") + setup_hesap(e_arka, e_kalip_arka, "KARTON")) * grafik_sayisi
     e_tir = (tiraj_hesap(e_on_ad, e_kalip_on, "KARTON") + tiraj_hesap(e_ark_ad, e_kalip_arka, "KARTON")) * grafik_sayisi
     e_boya_tut = ((b_en*b_boy*0.2*e_on_ad)/1000000) * (17*euro_kur if e_boya=="CMYK" else 28*euro_kur)
-    e_ver_tut = (600 + ((b_en*b_boy*0.25*e_on_ad)/1000000 * 30 * dolar_kur * 1.2)) if e_ver=="EVET" else 0
-    e_uv_tut = (3000 + ((b_en*b_boy*0.7*e_on_ad)/1000000 * 8 * euro_kur)) if e_uv=="EVET" else 0
-    e_disp_tut = (1500 + (kagit_en*kagit_boy*baski_brut*4/10000000*3*euro_kur*3)) if e_disp=="EVET" else 0
-    e_kau_tut = 3000 if e_kau=="EVET" else 0
-    e_toplam = e_set + e_tir + e_boya_tut + e_ver_tut + e_uv_tut + e_disp_tut + e_kau_tut
+    
+    e_ekstra = 0
+    if e_ver=="EVET": e_ekstra += 600 + ((b_en*b_boy*0.25*e_on_ad)/1000000 * 30 * dolar_kur * 1.2)
+    if e_uv=="EVET": e_ekstra += 3000 + ((b_en*b_boy*0.7*e_on_ad)/1000000 * 8 * euro_kur)
+    if e_disp=="EVET": e_ekstra += 1500 + (kagit_en*kagit_boy*baski_brut*4/10000000*3*euro_kur*3)
+    if e_kau=="EVET": e_ekstra += 3000
+    e_toplam = e_set + e_tir + e_boya_tut + e_ekstra
     st.info(f"Toplam: {e_toplam:,.2f} ₺")
 
 # METALİZE
@@ -148,7 +150,7 @@ with col_m:
     st.subheader("⬜ Metalize Baskı")
     f_on = st.selectbox("Ön Baskı", ["HAYIR", "EVET"], key="fo")
     f_arka = st.selectbox("Arka Baskı", ["HAYIR", "EVET"], key="fa")
-    f_boya = st.selectbox("Boya Türü", ["CMYK", "PANTONE"], key="fb")
+    f_boya = st.selectbox("Boya", ["CMYK", "PANTONE"], key="fb")
     f_kalip_on = st.number_input("Ön Kalıp Adet", value=0, key="fko")
     f_kalip_arka = st.number_input("Arka Kalıp Adet", value=0, key="fka")
     f_ver = st.selectbox("Vernik", ["HAYIR", "EVET"], key="fv")
@@ -161,11 +163,13 @@ with col_m:
     f_set = (setup_hesap(f_on, f_kalip_on, "MET") + setup_hesap(f_arka, f_kalip_arka, "MET")) * grafik_sayisi
     f_tir = (tiraj_hesap(f_on_ad, f_kalip_on, "MET") + tiraj_hesap(f_ark_ad, f_kalip_arka, "MET")) * grafik_sayisi
     f_boya_tut = ((b_en*b_boy*0.2*f_on_ad)/1000000) * (17*euro_kur if f_boya=="CMYK" else 28*euro_kur)
-    f_ver_tut = (600 + ((b_en*b_boy*0.25*f_on_ad)/1000000 * 30 * dolar_kur * 1.2)) if f_ver=="EVET" else 0
-    f_uv_tut = (3000 + ((b_en*b_boy*0.7*f_on_ad)/1000000 * 8 * euro_kur)) if f_uv=="EVET" else 0
-    f_disp_tut = (1500 + (kagit_en*kagit_boy*baski_brut*4/10000000*3*euro_kur*3)) if f_disp=="EVET" else 0
-    f_kau_tut = 3000 if f_kau=="EVET" else 0
-    f_toplam = f_set + f_tir + f_boya_tut + f_ver_tut + f_uv_tut + f_disp_tut + f_kau_tut
+    
+    f_ekstra = 0
+    if f_ver=="EVET": f_ekstra += 600 + ((b_en*b_boy*0.25*f_on_ad)/1000000 * 30 * dolar_kur * 1.2)
+    if f_uv=="EVET": f_ekstra += 3000 + ((b_en*b_boy*0.7*f_on_ad)/1000000 * 8 * euro_kur)
+    if f_disp=="EVET": f_ekstra += 1500 + (kagit_en*kagit_boy*baski_brut*4/10000000*3*euro_kur*3)
+    if f_kau=="EVET": f_ekstra += 3000
+    f_toplam = f_set + f_tir + f_boya_tut + f_ekstra
     st.info(f"Toplam: {f_toplam:,.2f} ₺")
 
 st.markdown("---")
@@ -252,88 +256,73 @@ with t3:
 st.markdown("---")
 
 # ==========================================
-# 📦 KOLİ VE PALET SİHİRBAZI (YENİ MODÜL)
+# 📦 KOLİ & PALET MASTER
 # ==========================================
-st.header("📦 Koli & Palet Sihirbazı")
-st.info("Karton kalınlığı ve ürün ölçülerine göre otomatik koli ebadı hesaplar.")
+st.header("📦 Koli & Palet Master")
+
+
+[Image of packaging box dimensions unfolding to die line]
+
 
 kp1, kp2 = st.columns(2)
 
 with kp1:
-    st.subheader("Ürün Özellikleri")
-    urun_en = st.number_input("Ürün Eni (cm)", value=10.0, step=0.1)
-    urun_boy = st.number_input("Ürün Boyu (cm)", value=15.0, step=0.1)
-    urun_yukseklik = st.number_input("Ürün Derinlik/Körük (cm)", value=5.0, step=0.1)
-    karton_mikron = st.number_input("Karton Kalınlığı (mm)", value=0.40, step=0.01, format="%.2f")
-    yapistirma_tipi = st.radio("Yapıştırma Tipi", ["Yan Yapıştırma (3 Kat)", "Dip Yapıştırma (5 Kat)"], horizontal=True)
+    st.subheader("Ürün")
+    u_en = st.number_input("Ürün En (cm)", value=10.0, step=0.1)
+    u_boy = st.number_input("Ürün Boy (cm)", value=15.0, step=0.1)
+    u_der = st.number_input("Ürün Derinlik", value=5.0, step=0.1)
+    k_mik = st.number_input("Karton (mm)", value=0.40, step=0.01)
+    y_tip = st.radio("Yapıştırma", ["Yan (3 Kat)", "Dip (5 Kat)"])
 
 with kp2:
-    st.subheader("Koli Özellikleri")
-    dizim_yonu = st.radio("Koli İçi Dizim", ["Dik Dizim (Kutu)", "Yatık Dizim (Çanta)"])
-    koli_ici_adet = st.number_input("Koli İçi Adet", value=100, step=10)
-    koli_tolerans = st.number_input("Koli Payı (cm)", value=0.5)
+    st.subheader("Koli")
+    d_yon = st.radio("Dizim", ["Dik (Kutu)", "Yatık (Çanta)"])
+    k_adet = st.number_input("Koli İçi Adet", value=100, step=10)
+    # Varsayılan paylar (Hassas Hesap: En+1.5, Boy+1.0, Derinlik+0)
+    p_en = 1.5; p_boy = 1.0; p_der = 0.0
+    
+    # Palet
+    palet_max = st.number_input("Max Palet Yükseklik (cm)", value=150)
+    # Ahşap Paletin Kendi Yüksekliği (Örn: 15cm)
+    palet_tahta = st.number_input("Ahşap Palet Payı (cm)", value=15)
 
-# --- KOLİ HESAPLAMA MOTORU ---
-# 1. Tek Ürün Kalınlık Hesabı
-kat_sayisi = 3 if "Yan" in yapistirma_tipi else 5
-tek_urun_kalinlik_cm = (karton_mikron * kat_sayisi) / 10 # mm to cm
+# --- KOLİ EBADI ---
+kat = 3 if "Yan" in y_tip else 5
+tek_kalinlik = (k_mik * kat) / 10
+istif = tek_kalinlik * k_adet
 
-# 2. İstif Kalınlığı (Toplam Şişme)
-istif_kalinligi = tek_urun_kalinlik_cm * koli_ici_adet
-
-# 3. Koli Ebatları
-koli_en = 0
-koli_boy = 0
-koli_yukseklik = 0
-
-if dizim_yonu == "Dik Dizim (Kutu)":
-    # Kutu dik duruyor (Yan yana)
-    koli_en = urun_en + koli_tolerans
-    koli_boy = urun_boy + koli_tolerans
-    koli_yukseklik = istif_kalinligi + koli_tolerans # Derinlik yükseklik olur
+if d_yon == "Dik (Kutu)":
+    kol_en = u_en + p_en
+    kol_boy = u_boy + p_boy
+    kol_yuk = istif + p_der
 else:
-    # Çanta yatık duruyor (Üst üste)
-    koli_en = urun_en + koli_tolerans
-    koli_boy = urun_yukseklik + koli_tolerans # Çanta körüğü boy olur
-    koli_yukseklik = istif_kalinligi + koli_tolerans # Üst üste binen kalınlık
+    kol_en = u_en + p_en
+    kol_boy = u_der + p_boy
+    kol_yuk = istif + p_der
 
-st.warning(f"📏 HESAPLANAN KOLİ EBADI: {koli_en:.1f} x {koli_boy:.1f} x {koli_yukseklik:.1f} cm")
+st.warning(f"📏 KOLİ EBADI: {kol_en:.1f} x {kol_boy:.1f} x {kol_yuk:.1f} cm")
 
-# --- PALET HESABI (80x120) ---
-st.subheader("Euro Palet (80x120) Yerleşimi")
+# --- PALET YERLEŞİMİ (80x120) ---
+s1_en = math.floor(80/kol_en); s1_boy = math.floor(120/kol_boy); t1 = s1_en*s1_boy
+s2_en = math.floor(80/kol_boy); s2_boy = math.floor(120/kol_en); t2 = s2_en*s2_boy
+palet_taban = max(t1, t2)
 
-# Algoritma: İki türlü de dener, en çok sığanı seçer
-# Senaryo 1: En -> 80, Boy -> 120
-s1_en = math.floor(80 / koli_en)
-s1_boy = math.floor(120 / koli_boy)
-toplam1 = s1_en * s1_boy
+# KAT HESABI (YENİ VE KRİTİK KISIM)
+net_yukseklik = palet_max - palet_tahta
+cikilacak_kat = math.floor(net_yukseklik / kol_yuk)
+bir_palet_koli = palet_taban * cikilacak_kat
 
-# Senaryo 2: Boy -> 80, En -> 120 (Döndürerek)
-s2_en = math.floor(80 / koli_boy)
-s2_boy = math.floor(120 / koli_en)
-toplam2 = s2_en * s2_boy
+# TOPLAM İHTİYAÇ
+toplam_koli_ihtiyac = math.ceil(siparis_adedi / k_adet)
+toplam_palet_ihtiyac = math.ceil(toplam_koli_ihtiyac / bir_palet_koli) if bir_palet_koli>0 else 0
 
-if toplam1 >= toplam2:
-    palet_taban_adet = toplam1
-    dizilim_text = f"80'lik tarafa {s1_en}, 120'lik tarafa {s1_boy} adet."
-else:
-    palet_taban_adet = toplam2
-    dizilim_text = f"80'lik tarafa {s2_en} (döndürülmüş), 120'lik tarafa {s2_boy} adet."
+col_pal1, col_pal2 = st.columns(2)
+with col_pal1:
+    st.info(f"**1 PALETE SIĞAN:**\n\nTaban: {palet_taban} adet\nKat: {cikilacak_kat} sıra\n**TOPLAM: {bir_palet_koli} KOLİ**")
+with col_pal2:
+    st.error(f"**TOPLAM GEREKEN:**\n\nSipariş İçin: {toplam_koli_ihtiyac} Koli\n**LOJİSTİK: {toplam_palet_ihtiyac} PALET**")
 
-st.success(f"Bir Sıraya Sığan Koli: **{palet_taban_adet} Adet** ({dizilim_text})")
-
-# Toplam Koli İhtiyacı
-toplam_koli_ihtiyaci = math.ceil(siparis_adedi / koli_ici_adet)
-palet_kat_sayisi = math.ceil(toplam_koli_ihtiyaci / palet_taban_adet)
-
-kp_col1, kp_col2 = st.columns(2)
-with kp_col1:
-    st.write(f"Toplam Koli İhtiyacı: **{toplam_koli_ihtiyaci}**")
-with kp_col2:
-    st.write(f"Tahmini Palet Yüksekliği: **{palet_kat_sayisi * koli_yukseklik + 15:.1f} cm** (Palet dahil)")
-
-# Otomatik Veri Aktarımı
-auto_koli = st.checkbox("Koli ve Palet Sayısını Lojistik Kısmına Aktar")
+auto_koli = st.checkbox("Verileri Lojistik'e Aktar")
 
 st.markdown("---")
 
@@ -348,12 +337,10 @@ with ml1:
     m_asetat = st.number_input("Asetat", value=0.0)
     m_ondule = st.number_input("Ondüle", value=0.0)
 with ml2:
-    # Otomatik aktarım varsa buraya yaz, yoksa manuel
-    val_koli = toplam_koli_ihtiyaci if auto_koli else 0
-    val_palet = 1 if auto_koli else 0 # Basitçe 1 palet varsaydık, detaylandırılabilir
-    
-    koli_ad = st.number_input("Koli Adet", value=val_koli)
-    palet_ad = st.number_input("Palet Adet", value=val_palet)
+    v_koli = toplam_koli_ihtiyac if auto_koli else 0
+    v_palet = toplam_palet_ihtiyac if auto_koli else 0
+    koli_ad = st.number_input("Koli Adet", value=v_koli)
+    palet_ad = st.number_input("Palet Adet", value=v_palet)
     m_koli_palet = (koli_ad * 50) + (palet_ad * 600)
     st.write(f"Koli+Palet: {m_koli_palet} ₺")
 with ml3:
@@ -362,7 +349,7 @@ with ml3:
     m_sigorta = m_navlun * 0.01
 with ml4:
     lojistik_toplam = m_bicak + m_asetat + m_ondule + m_koli_palet + m_gumruk + m_navlun + m_sigorta
-    st.error(f"Lojistik Toplam: {lojistik_toplam:,.2f} ₺")
+    st.error(f"Ekstra Toplam: {lojistik_toplam:,.2f} ₺")
 
 st.markdown("---")
 
