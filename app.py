@@ -1,18 +1,66 @@
 import streamlit as st
+import requests
+import xml.etree.ElementTree as ET
 
 # ==========================================
-# ⚙️ SADECE KURLAR (YAN MENÜ)
+# 🌐 OTOMATİK KUR ÇEKME FONKSİYONU (TCMB)
 # ==========================================
+def kur_getir():
+    # Varsayılan değerler (Eğer internet yoksa bunlar gelir)
+    usd, eur, gbp = 34.50, 37.20, 43.50
+    
+    try:
+        url = "https://www.tcmb.gov.tr/kurlar/today.xml"
+        response = requests.get(url)
+        
+        if response.status_code == 200:
+            root = ET.fromstring(response.content)
+            
+            # XML içinden kurları bul
+            for currency in root.findall('Currency'):
+                kod = currency.get('Kod')
+                # Banknot Satış (Efektif Satış) en güvenlisidir, yoksa ForexSelling alırız
+                try:
+                    satis = currency.find('BanknoteSelling').text
+                    if not satis: # Bazen boş olabilir
+                        satis = currency.find('ForexSelling').text
+                except:
+                    continue
+
+                if kod == "USD":
+                    usd = float(satis)
+                elif kod == "EUR":
+                    eur = float(satis)
+                elif kod == "GBP":
+                    gbp = float(satis)
+                    
+        return usd, eur, gbp
+        
+    except Exception as e:
+        # Hata olursa varsayılanları döndür
+        return 34.50, 37.20, 43.50
+
+# Sayfa Ayarları
 st.set_page_config(page_title="Matbaa Maliyet Hesaplayıcı", layout="wide", page_icon="🖨️")
 
+# Kurları Çek
+oto_usd, oto_eur, oto_gbp = kur_getir()
+
+# ==========================================
+# ⚙️ AYARLAR (SIDEBAR)
+# ==========================================
 with st.sidebar:
     st.header("💱 Döviz Kurları")
-    dolar_kur = st.number_input("Dolar ($)", value=34.50, step=0.01, format="%.2f")
-    euro_kur = st.number_input("Euro (€)", value=37.20, step=0.01, format="%.2f")
-    sterlin_kur = st.number_input("Sterlin (£)", value=43.50, step=0.01, format="%.2f")
-    st.info("Sadece kurları buradan girin. Diğer her şey formun içindedir.")
+    
+    # Otomatik çekilen değerleri 'value' olarak atadık
+    dolar_kur = st.number_input("Dolar ($)", value=oto_usd, step=0.01, format="%.4f")
+    euro_kur = st.number_input("Euro (€)", value=oto_eur, step=0.01, format="%.4f")
+    sterlin_kur = st.number_input("Sterlin (£)", value=oto_gbp, step=0.01, format="%.4f")
+    
+    st.success(f"✅ Kurlar TCMB'den çekildi.\nGüncelleme: Otomatik")
+    st.info("Kurlar otomatik gelir ama isterseniz manuel değiştirebilirsiniz.")
 
-st.title("🖨️ Matbaa Üretim & Maliyet Hesabı (Tam Kontrol)")
+st.title("🖨️ Matbaa Maliyet Hesabı (Canlı Kur)")
 st.markdown("---")
 
 # ==========================================
@@ -86,13 +134,11 @@ with ck:
     e_kalip_on = st.number_input("Ön Kalıp", value=4)
     e_kalip_arka = st.number_input("Arka Kalıp", value=0)
     
-    # Ekstralar
     e_ver = st.selectbox("Vernik", ["HAYIR", "EVET"], key="ev")
     e_uv = st.selectbox("UV Lak", ["HAYIR", "EVET"], key="euv")
     e_disp = st.selectbox("Dispersiyon", ["HAYIR", "EVET"], key="ed")
     e_kau = st.selectbox("Kauçuk", ["HAYIR", "EVET"], key="ek")
     
-    # Hesap
     e_on_ad = baski_brut if e_on=="EVET" else 0
     e_ark_ad = baski_brut if e_arka=="EVET" else 0
     
@@ -194,7 +240,6 @@ with t2:
         if st.checkbox("Yaldız"):
             y_adet = st.number_input("Yaldız Baskı Adet", value=baski_brut)
             y_gecis = 2000 if y_adet<=1000 else (y_adet-1000)*0.8+2000
-            # Basitleştirilmiş manuel giriş
             y_sarf_klise = st.number_input("Yaldız Sarfiyat + Klişe Toplamı", value=0.0)
             yal_tutar = y_gecis + y_sarf_klise
         st.write(f"Toplam: {(seri_tutar+yal_tutar):,.2f} ₺")
@@ -224,10 +269,10 @@ with t3:
 st.markdown("---")
 
 # ==========================================
-# 🚛 4. MANUEL GİDERLER & LOJİSTİK (BURASI KRİTİK)
+# 🚛 4. MANUEL GİDERLER & LOJİSTİK
 # ==========================================
-st.header("🚛 4. Manuel Giderler & Lojistik (Hepsini Sen Gir)")
-st.warning("⚠️ Buradaki değerleri işe göre manuel doldurunuz. Hepsi '0' başlar.")
+st.header("🚛 4. Manuel Giderler & Lojistik")
+st.warning("⚠️ Lojistik kalemlerini manuel giriniz.")
 
 ml1, ml2, ml3, ml4 = st.columns(4)
 
@@ -244,24 +289,21 @@ with ml2:
 
 with ml3:
     m_gumruk = st.number_input("Gümrük (N15)", value=0.0, step=100.0)
-    # BURASI NAVLUN - MANUEL GİRİŞ
     m_navlun = st.number_input("NAVLUN BEDELİ (N16)", value=0.0, step=100.0)
     m_sigorta = m_navlun * 0.01
     st.write(f"Sigorta (%1): **{m_sigorta:,.2f} ₺**")
 
 with ml4:
-    # Toplam Lojistik Göstergesi
     lojistik_toplam = m_bicak + m_asetat + m_ondule + m_koli_palet + m_gumruk + m_navlun + m_sigorta
-    st.error(f"Lojistik & Ekstra Toplam:\n\n{lojistik_toplam:,.2f} ₺")
+    st.error(f"Lojistik Toplam:\n\n{lojistik_toplam:,.2f} ₺")
 
 st.markdown("---")
 
 # ==========================================
-# 💰 5. FİNAL HESAP VE TEKLİF (KAR BURADA)
+# 💰 5. FİNAL HESAP
 # ==========================================
 st.header("📊 5. Fiyatlandırma & Kâr")
 
-# Maliyet Toplama
 dis_maliyet = (kagit_tutar + sel_tutar + soft_tutar + siv_tutar + 
                seri_tutar + yal_tutar + gof_tutar + m_bicak + m_asetat + m_ondule + 
                m_koli_palet + m_gumruk + m_navlun)
@@ -270,23 +312,17 @@ ic_maliyet = (e_toplam + f_toplam + kesim_tutar + yap_tutar + m_sigorta)
 
 ham_maliyet = dis_maliyet + ic_maliyet
 
-# EKRAN
 c_son1, c_son2 = st.columns(2)
 
 with c_son1:
     st.write(f"Dış Maliyetler: {dis_maliyet:,.2f} ₺")
     st.write(f"İç Maliyetler: {ic_maliyet:,.2f} ₺")
     st.error(f"**TOPLAM HAM MALİYET: {ham_maliyet:,.2f} ₺**")
-    
-    # Navlun Kontrolü
-    if m_navlun > 0:
-        st.caption(f"✅ Navlun ({m_navlun} ₺) maliyete dahildir.")
-    else:
-        st.caption("⚠️ Navlun girilmedi (0 ₺).")
+    if m_navlun > 0: st.success(f"Navlun ({m_navlun} ₺) dahildir.")
+    else: st.warning("Navlun 0 ₺ girildi.")
 
 with c_son2:
     st.subheader("Satış Fiyatını Belirle")
-    # KÂR ORANI BURADA - SIFIR BAŞLAR
     kar_yuzde = st.number_input("Kâr Oranı (%) Giriniz", value=0, step=5)
     
     satis_tl = ham_maliyet * (1 + kar_yuzde/100)
