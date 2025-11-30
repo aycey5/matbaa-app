@@ -7,11 +7,8 @@ st.set_page_config(page_title="Matbaa Maliyet Hesaplayıcı", layout="wide", pag
 
 with st.sidebar:
     st.header("⚙️ Döviz Kurları")
-    # S3 Hücresi
     dolar_kur = st.number_input("Dolar Kuru ($) - S3", value=34.50, step=0.01, format="%.2f")
-    # S4 Hücresi (Q4'ü de bu kabul ettik)
     euro_kur = st.number_input("Euro Kuru (€) - S4", value=37.20, step=0.01, format="%.2f")
-    
     st.divider()
     st.info("Formüllerdeki S3 (Dolar) ve S4 (Euro) değerleri buradan çekilir.")
 
@@ -19,7 +16,7 @@ st.title("🖨️ Matbaa Üretim & Maliyet Hesabı")
 st.markdown("---")
 
 # ==========================================
-# 📝 İŞ BİLGİLERİ (A1, A2)
+# 📝 İŞ BİLGİLERİ
 # ==========================================
 col_info1, col_info2 = st.columns(2)
 with col_info1:
@@ -36,27 +33,27 @@ st.header("📦 1. Kağıt Hesabı")
 k1, k2, k3, k4 = st.columns(4)
 
 with k1:
-    kagit_en = st.number_input("Kağıt En (B5/H5)", value=70.0) # B5 ve H5 aynı
-    kagit_boy = st.number_input("Kağıt Boy (C5/I5)", value=100.0) # C5 ve I5 aynı
+    kagit_en = st.number_input("Kağıt En (B5/H5)", value=70.0) 
+    kagit_boy = st.number_input("Kağıt Boy (C5/I5)", value=100.0) 
     gramaj = st.number_input("Kağıt Gramaj (B7)", value=350) 
 
 with k2:
     kagit_brut = st.number_input("Kağıt Brüt Tabaka (B8)", value=1000, step=100) 
-    baski_brut = st.number_input("Baskı Brüt Tabaka (B9/H10)", value=1000, step=100) # Selefonda H10 olacak
+    # H15 ve G10 için referans:
+    baski_brut = st.number_input("Baskı Brüt Tabaka (B9)", value=1000, step=100) 
     verimlilik = st.number_input("Baskı Verimlilik (B10)", value=100) 
 
 with k3:
+    # H20 için referans:
     siparis_adedi = st.number_input("Sipariş Ürün Adedi (B11)", value=5000) 
     kur_secimi = st.selectbox("Kağıt Kur (B12)", ["DOLAR", "EURO", "TL"]) 
     kagit_birim_fiyat = st.number_input("Kağıt Fiyatı (B13)", value=800.0) 
 
-# --- KAĞIT HESAPLAMALARI ---
+# Hesaplamalar
 toplam_kilo = (kagit_en * kagit_boy * gramaj * kagit_brut) / 10000000
-
 secilen_kur_degeri = 1.0
 if kur_secimi == "DOLAR": secilen_kur_degeri = dolar_kur
 elif kur_secimi == "EURO": secilen_kur_degeri = euro_kur
-
 kagit_toplam_tutar = (kagit_birim_fiyat / 1000) * toplam_kilo * secilen_kur_degeri
 
 with k4:
@@ -66,7 +63,7 @@ with k4:
 st.markdown("---")
 
 # ==========================================
-# 🎨 2. BÖLÜM: BASKI HESABI (D5-F30)
+# 🎨 2. BÖLÜM: BASKI HESABI
 # ==========================================
 st.header("🎨 2. Baskı Hesabı")
 
@@ -78,16 +75,14 @@ with col_baski_ebat2:
 
 col_karton, col_metalize = st.columns(2)
 
-# --- YARDIMCI FONKSİYONLAR ---
+# Fonksiyonlar
 def hesapla_baski_sayisi(evet_hayir, brut_tabaka):
     return brut_tabaka if evet_hayir == "EVET" else 0
 
 def hesapla_setup(evet_hayir, kalip_sayisi, tip="KARTON"):
     if evet_hayir == "HAYIR": return 0
-    if tip == "KARTON":
-        return 6000 if 6 <= kalip_sayisi < 10 else 3000
-    else:
-        return 12000 if 6 <= kalip_sayisi < 10 else 6000
+    if tip == "KARTON": return 6000 if 6 <= kalip_sayisi < 10 else 3000
+    else: return 12000 if 6 <= kalip_sayisi < 10 else 6000
 
 def hesapla_tiraj(baski_sayisi, kalip_sayisi, tip="KARTON"):
     if baski_sayisi <= 1000: return 0
@@ -96,20 +91,20 @@ def hesapla_tiraj(baski_sayisi, kalip_sayisi, tip="KARTON"):
     birim = 0.8 if tip == "KARTON" else 1.3
     return fark * birim * carpan
 
-# --- KARTON BASKI ---
+# Karton Baskı
 with col_karton:
     st.subheader("🟫 Karton Baskı (E)")
-    e_on_baski = st.selectbox("Ön Baskı (E7)", ["EVET", "HAYIR"], index=0)
-    e_arka_baski = st.selectbox("Arka Baskı (E8)", ["EVET", "HAYIR"], index=1)
-    e_boya_turu = st.selectbox("Boya Türü (E9)", ["CMYK", "PANTONE"])
-    e_on_kalip = st.number_input("Ön Kalıp (D10)", value=4)
-    e_arka_kalip = st.number_input("Arka Kalıp (E11)", value=0)
-    e_vernik = st.selectbox("Vernik (E12)", ["EVET", "HAYIR"], index=1)
-    e_uv = st.selectbox("UV Lak (E13)", ["EVET", "HAYIR"], index=1)
-    e_disp = st.selectbox("Dispersiyon (E14)", ["EVET", "HAYIR"], index=1)
-    e_kaucuk = st.selectbox("Kauçuk (E15)", ["EVET", "HAYIR"], index=1)
+    e_on_baski = st.selectbox("Ön Baskı", ["EVET", "HAYIR"], index=0, key="e_on")
+    e_arka_baski = st.selectbox("Arka Baskı", ["EVET", "HAYIR"], index=1, key="e_arka")
+    e_boya_turu = st.selectbox("Boya Türü", ["CMYK", "PANTONE"], key="e_boya")
+    e_on_kalip = st.number_input("Ön Kalıp", value=4, key="e_on_k")
+    e_arka_kalip = st.number_input("Arka Kalıp", value=0, key="e_arka_k")
+    
+    e_vernik = st.selectbox("Vernik", ["EVET", "HAYIR"], index=1, key="e_ver")
+    e_uv = st.selectbox("UV Lak", ["EVET", "HAYIR"], index=1, key="e_uv")
+    e_disp = st.selectbox("Dispersiyon", ["EVET", "HAYIR"], index=1, key="e_disp")
+    e_kaucuk = st.selectbox("Kauçuk", ["EVET", "HAYIR"], index=1, key="e_kau")
 
-    # Hesaplamalar
     e_on_sayi = hesapla_baski_sayisi(e_on_baski, baski_brut)
     e_on_setup = hesapla_setup(e_on_baski, e_on_kalip, "KARTON")
     e_on_tiraj = hesapla_tiraj(e_on_sayi, e_on_kalip, "KARTON")
@@ -133,20 +128,19 @@ with col_karton:
     e_toplam = e_on_setup + e_arka_setup + e_on_tiraj + e_arka_tiraj + e_vernik_gecis + e_disp_fiyat + e_kaucuk_fiyat + e_murekkep_fiyat + e_uv_fiyat
     st.info(f"Karton Toplam: {e_toplam:,.2f} ₺")
 
-# --- METALİZE BASKI ---
+# Metalize Baskı
 with col_metalize:
     st.subheader("⬜ Metalize Baskı (F)")
-    f_on_baski = st.selectbox("Ön Baskı (F7)", ["EVET", "HAYIR"], index=1)
-    f_arka_baski = st.selectbox("Arka Baskı (F8)", ["EVET", "HAYIR"], index=1)
-    f_boya_turu = st.selectbox("Boya Türü (F9)", ["CMYK", "PANTONE"])
-    f_on_kalip = st.number_input("Ön Kalıp (F10)", value=0)
-    f_arka_kalip = st.number_input("Arka Kalıp (F11)", value=0)
-    f_vernik = st.selectbox("Vernik (F12)", ["EVET", "HAYIR"], index=1)
-    f_uv = st.selectbox("UV Lak (F13)", ["EVET", "HAYIR"], index=1)
-    f_disp = st.selectbox("Dispersiyon (F14)", ["EVET", "HAYIR"], index=1)
-    f_kaucuk = st.selectbox("Kauçuk (F15)", ["EVET", "HAYIR"], index=1)
+    f_on_baski = st.selectbox("Ön Baskı", ["EVET", "HAYIR"], index=1, key="f_on")
+    f_arka_baski = st.selectbox("Arka Baskı", ["EVET", "HAYIR"], index=1, key="f_arka")
+    f_boya_turu = st.selectbox("Boya Türü", ["CMYK", "PANTONE"], key="f_boya")
+    f_on_kalip = st.number_input("Ön Kalıp", value=0, key="f_on_k")
+    f_arka_kalip = st.number_input("Arka Kalıp", value=0, key="f_arka_k")
+    f_vernik = st.selectbox("Vernik", ["EVET", "HAYIR"], index=1, key="f_ver")
+    f_uv = st.selectbox("UV Lak", ["EVET", "HAYIR"], index=1, key="f_uv")
+    f_disp = st.selectbox("Dispersiyon", ["EVET", "HAYIR"], index=1, key="f_disp")
+    f_kaucuk = st.selectbox("Kauçuk", ["EVET", "HAYIR"], index=1, key="f_kau")
 
-    # Hesaplamalar
     f_on_sayi = hesapla_baski_sayisi(f_on_baski, baski_brut)
     f_on_setup = hesapla_setup(f_on_baski, f_on_kalip, "METALIZE")
     f_on_tiraj = hesapla_tiraj(f_on_sayi, f_on_kalip, "METALIZE")
@@ -173,53 +167,103 @@ with col_metalize:
 st.markdown("---")
 
 # ==========================================
-# ✨ 3. BÖLÜM: SELEFON HESABI (YENİ EKLENEN)
+# ✨ 3. BÖLÜM: SELEFON HESABI
 # ==========================================
-st.header("✨ 3. Selefon Hesabı (G5-I11)")
+st.header("✨ 3. Selefon Hesabı")
 col_sel1, col_sel2, col_sel3 = st.columns(3)
 
 with col_sel1:
-    # H6: Tedarikçi Firma
     sel_tedarikci = st.selectbox("Tedarikçi (H6)", ["SÜPER", "TEKNİK"])
-    # H7: Selefon Türü
     sel_tur = st.selectbox("Selefon Türü (H7)", ["PARLAK", "MAT", "METALİZE", "ÇİZİLMEZ"])
 
 with col_sel2:
-    # H9: Selefon Yönü
     sel_yon = st.selectbox("Selefon Yönü (H9)", ["TEK YÜZ", "ÇİFT YÜZ"])
-    # G10/H10: Adet (Otomatik B9'dan geliyor)
-    st.info(f"Adet (H10): {baski_brut}")
+    st.info(f"Adet (B9): {baski_brut}")
 
-# H8: Metrekare Fiyatı Hesaplama (Sözlük Yapısı ile)
-# Excel'deki VE(H6=...; H7=...) mantığının Python hali
 fiyat_listesi = {
-    ("SÜPER", "PARLAK"): 0.10,
-    ("SÜPER", "MAT"): 0.11,
-    ("SÜPER", "METALİZE"): 0.18,
-    ("SÜPER", "ÇİZİLMEZ"): 0.42,
-    ("TEKNİK", "PARLAK"): 0.13,
-    ("TEKNİK", "MAT"): 0.14,
-    ("TEKNİK", "METALİZE"): 0.20,
-    ("TEKNİK", "ÇİZİLMEZ"): 0.60
+    ("SÜPER", "PARLAK"): 0.10, ("SÜPER", "MAT"): 0.11,
+    ("SÜPER", "METALİZE"): 0.18, ("SÜPER", "ÇİZİLMEZ"): 0.42,
+    ("TEKNİK", "PARLAK"): 0.13, ("TEKNİK", "MAT"): 0.14,
+    ("TEKNİK", "METALİZE"): 0.20, ("TEKNİK", "ÇİZİLMEZ"): 0.60
 }
-
-# Seçilen kombinasyona göre fiyatı çek, yoksa 0 döndür
 sel_m2_fiyat = fiyat_listesi.get((sel_tedarikci, sel_tur), 0.0)
 
 with col_sel3:
     st.metric("m² Fiyatı ($) (H8)", f"{sel_m2_fiyat} $")
 
-# H11: TOPLAM FİYAT HESAPLAMA
-# Formül: (H5/100) * (I5/100) * H8 * H10 * S3
-# Eğer Çift Yüz ise * 2
 sel_alan_hesabi = (kagit_en / 100) * (kagit_boy / 100) * sel_m2_fiyat * baski_brut * dolar_kur
+if sel_yon == "ÇİFT YÜZ": sel_toplam_tutar = sel_alan_hesabi * 2
+else: sel_toplam_tutar = sel_alan_hesabi
 
-if sel_yon == "ÇİFT YÜZ":
-    sel_toplam_tutar = sel_alan_hesabi * 2
-else:
-    sel_toplam_tutar = sel_alan_hesabi
+st.success(f"Selefon Toplam Fiyat: {sel_toplam_tutar:,.2f} ₺")
 
-st.success(f"Selefon Toplam Fiyat (H11): {sel_toplam_tutar:,.2f} ₺")
+st.markdown("---")
+
+# ==========================================
+# ✂️ 4. BÖLÜM: KESİM VE YAPIŞTIRMA (G14-I21)
+# ==========================================
+st.header("✂️ 4. Kesim ve Yapıştırma")
+col_kesim, col_yap = st.columns(2)
+
+# --- KESİM (H16) ---
+with col_kesim:
+    st.subheader("✂️ Kesim (H16)")
+    # G14: Kesim Şekli
+    kesim_sekli = st.selectbox("Kesim Şekli (G14)", ["BOBST KESİM", "GOFRELİ KESİM", "SIVAMALI KESİM", "AYIKLAMALI KESİM"])
+    
+    # G15/H15: Adet (B9'dan gelir)
+    kesim_adet = baski_brut
+    st.info(f"Kesim Adedi (B9): {kesim_adet}")
+    
+    # Fiyat Tablosu: [Taban Fiyat (<=2000), Adet Başı Ek (>2000)]
+    kesim_data = {
+        "BOBST KESİM":      [2500, 0.75],
+        "GOFRELİ KESİM":    [3000, 0.80],
+        "SIVAMALI KESİM":   [3000, 1.50],
+        "AYIKLAMALI KESİM": [4500, 0.85]
+    }
+    
+    k_taban, k_carpan = kesim_data.get(kesim_sekli, [0, 0])
+    
+    # H16 Formülü
+    if kesim_adet <= 2000:
+        kesim_fiyat = k_taban
+    else:
+        kesim_fiyat = k_taban + (kesim_adet - 2000) * k_carpan
+        
+    st.success(f"Kesim Toplam Fiyat: {kesim_fiyat:,.2f} ₺")
+
+# --- YAPIŞTIRMA (H21) ---
+with col_yap:
+    st.subheader("🧴 Yapıştırma (H21)")
+    # G19: Yapıştırma Şekli
+    yap_sekli = st.selectbox("Yapıştırma Şekli (G19)", 
+                             ["YAN YAPIŞTIRMA", "YAN DİP YAPIŞTIRMA", "KONİK DİP YAPIŞTIRMA", 
+                              "ÜST SÜRME YAPIŞTIRMA", "4 NOKTA YAPIŞTIRMA", "6 NOKTA YAPIŞTIRMA"])
+    
+    # G20/H20: Adet (B11 - Sipariş Adedinden gelir)
+    yap_adet = siparis_adedi
+    st.info(f"Yapıştırma Adedi (B11): {yap_adet}")
+    
+    # Fiyat Tablosu: [Taban Fiyat (<=5000), Adet Başı Ek (>5000)]
+    yap_data = {
+        "YAN YAPIŞTIRMA":       [1500, 0.15],
+        "YAN DİP YAPIŞTIRMA":   [3000, 0.25],
+        "KONİK DİP YAPIŞTIRMA": [5500, 0.55],
+        "ÜST SÜRME YAPIŞTIRMA": [3000, 0.35],
+        "4 NOKTA YAPIŞTIRMA":   [7500, 0.75],
+        "6 NOKTA YAPIŞTIRMA":   [10000, 0.90] # Formülde 10000 ve 4500 vardı, 10000 baz alındı
+    }
+    
+    y_taban, y_carpan = yap_data.get(yap_sekli, [0, 0])
+    
+    # H21 Formülü
+    if yap_adet <= 5000:
+        yapistirma_fiyat = y_taban
+    else:
+        yapistirma_fiyat = y_taban + (yap_adet - 5000) * y_carpan
+        
+    st.success(f"Yapıştırma Toplam Fiyat: {yapistirma_fiyat:,.2f} ₺")
 
 st.markdown("---")
 
@@ -227,14 +271,17 @@ st.markdown("---")
 # 💰 GENEL SONUÇ
 # ==========================================
 st.header("💰 Genel Toplam")
-genel_toplam = kagit_toplam_tutar + e_toplam + f_toplam + sel_toplam_tutar
+genel_toplam = kagit_toplam_tutar + e_toplam + f_toplam + sel_toplam_tutar + kesim_fiyat + yapistirma_fiyat
 
 col_res1, col_res2 = st.columns(2)
 with col_res1:
     st.write(f"Kağıt Maliyeti: {kagit_toplam_tutar:,.2f} ₺")
-    st.write(f"Karton Baskı Maliyeti: {e_toplam:,.2f} ₺")
-    st.write(f"Metalize Baskı Maliyeti: {f_toplam:,.2f} ₺")
+    st.write(f"Karton Baskı: {e_toplam:,.2f} ₺")
+    st.write(f"Metalize Baskı: {f_toplam:,.2f} ₺")
     st.write(f"Selefon Maliyeti: {sel_toplam_tutar:,.2f} ₺")
+    st.write(f"Kesim Maliyeti: {kesim_fiyat:,.2f} ₺")
+    st.write(f"Yapıştırma Maliyeti: {yapistirma_fiyat:,.2f} ₺")
+
 with col_res2:
     st.metric("TOPLAM MALİYET", f"{genel_toplam:,.2f} ₺")
     st.metric("BİRİM MALİYET", f"{genel_toplam/siparis_adedi:,.2f} ₺")
