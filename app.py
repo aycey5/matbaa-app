@@ -1,219 +1,254 @@
 import streamlit as st
-import math
 
 # ==========================================
-# ⚙️ 0. AYARLAR VE SAYFA YAPISI
+# ⚙️ AYARLAR VE KURLAR (SIDEBAR)
 # ==========================================
-st.set_page_config(page_title="Matbaa Hesaplayıcı", layout="wide", page_icon="🖨️")
+st.set_page_config(page_title="Matbaa Maliyet Hesaplayıcı", layout="wide", page_icon="🖨️")
 
 with st.sidebar:
-    st.header("⚙️ Parametreler")
-    dolar_kur = st.number_input("Dolar Kuru ($)", value=34.50, step=0.01, format="%.2f")
-    euro_kur = st.number_input("Euro Kuru (€)", value=37.20, step=0.01, format="%.2f")
+    st.header("⚙️ Döviz Kurları")
+    # S3 Hücresi
+    dolar_kur = st.number_input("Dolar Kuru ($) - S3", value=34.50, step=0.01, format="%.2f")
+    # S4 Hücresi (Q4'ü de bu kabul ettik)
+    euro_kur = st.number_input("Euro Kuru (€) - S4", value=37.20, step=0.01, format="%.2f")
+    
     st.divider()
-    kar_orani = st.number_input("Kâr Oranı (%)", value=20, step=1)
-    teklif_para_birimi = st.radio("Teklif Para Birimi", ["TL", "DOLAR", "EURO"])
-    st.info("Hesaplamalar bu kurlara göre yapılır.")
+    st.info("Formüllerdeki S3 (Dolar) ve S4/Q4 (Euro) değerleri buradan çekilir.")
 
-st.title("🖨️ Matbaa Maliyet & Teklif Sistemi")
+st.title("🖨️ Matbaa Üretim & Maliyet Hesabı")
 st.markdown("---")
 
 # ==========================================
-# 🚀 SİPARİŞ VE VERİM
+# 📝 İŞ BİLGİLERİ (A1, A2)
 # ==========================================
-st.header("🚀 Sipariş ve Verim")
-c1, c2, c3, c4 = st.columns(4)
-
-with c1:
-    siparis_adedi = st.number_input("Sipariş Adedi", value=10000, step=1000)
-with c2:
-    verim = st.number_input("Tabakadan Çıkan (Verim)", value=4, min_value=1)
-with c3:
-    fire_yuzdesi = st.number_input("Fire Oranı (%)", value=3, step=1)
-
-net_tabaka = math.ceil(siparis_adedi / verim)
-fire_tabaka = math.ceil(net_tabaka * (fire_yuzdesi / 100))
-tabaka_sayisi = net_tabaka + fire_tabaka
-
-with c4:
-    st.warning(f"Baskı Tirajı: {net_tabaka}")
-    st.error(f"Toplam Tabaka: {tabaka_sayisi}")
+col_info1, col_info2 = st.columns(2)
+with col_info1:
+    musteri_adi = st.text_input("Müşteri Adı (B1)", "Örnek Müşteri A.Ş.")
+with col_info2:
+    isin_adi = st.text_input("İşin Adı (B2)", "Özel Kutu Basımı")
 
 st.markdown("---")
 
 # ==========================================
-# 📦 KAĞIT
+# 📦 1. BÖLÜM: KAĞIT HESABI (A5-A14)
 # ==========================================
-st.header("📦 1. Kağıt Özellikleri")
+st.header("📦 1. Kağıt Hesabı")
 k1, k2, k3, k4 = st.columns(4)
 
 with k1:
-    kagit_en = st.number_input("Kağıt En (cm)", value=70.0)
-    kagit_boy = st.number_input("Kağıt Boy (cm)", value=100.0)
-with k2:
-    gramaj = st.number_input("Gramaj (gr)", value=350)
-    st.info(f"Tabaka: {tabaka_sayisi}")
-with k3:
-    kagit_kur = st.selectbox("Kağıt Kuru", ["TL", "DOLAR", "EURO"])
-    ton_fiyat = st.number_input("Ton Fiyatı", value=800.0)
+    kagit_en = st.number_input("Kağıt En (B5)", value=70.0) # B5
+    kagit_boy = st.number_input("Kağıt Boy (C5)", value=100.0) # C5
+    gramaj = st.number_input("Kağıt Gramaj (B7)", value=350) # B7
 
-toplam_kilo = (kagit_en * kagit_boy * gramaj * tabaka_sayisi) / 10000000
-secilen_kur = 1.0
-if kagit_kur == "DOLAR": secilen_kur = dolar_kur
-elif kagit_kur == "EURO": secilen_kur = euro_kur
-kagit_maliyeti = (ton_fiyat / 1000) * toplam_kilo * secilen_kur
+with k2:
+    kagit_brut = st.number_input("Kağıt Brüt Tabaka (B8)", value=1000, step=100) # B8
+    baski_brut = st.number_input("Baskı Brüt Tabaka (B9)", value=1000, step=100) # B9
+    verimlilik = st.number_input("Baskı Verimlilik (B10)", value=100) # B10
+
+with k3:
+    siparis_adedi = st.number_input("Sipariş Ürün Adedi (B11)", value=5000) # B11
+    kur_secimi = st.selectbox("Kağıt Kur (B12)", ["DOLAR", "EURO", "TL"]) # B12
+    kagit_birim_fiyat = st.number_input("Kağıt Fiyatı (B13)", value=800.0) # B13
+
+# --- KAĞIT HESAPLAMALARI ---
+# B14: Toplam Kilo Formülü: =B5*C5*B7*B8/10000000
+toplam_kilo = (kagit_en * kagit_boy * gramaj * kagit_brut) / 10000000
+
+# Kağıt Toplam Maliyeti (Excel'de formülünü yazmamıştın ama genelde şöyledir: Kilo * Fiyat * Kur)
+secilen_kur_degeri = 1.0
+if kur_secimi == "DOLAR": secilen_kur_degeri = dolar_kur
+elif kur_secimi == "EURO": secilen_kur_degeri = euro_kur
+
+kagit_toplam_tutar = (kagit_birim_fiyat / 1000) * toplam_kilo * secilen_kur_degeri
 
 with k4:
-    st.metric("Toplam Kilo", f"{toplam_kilo:.2f} kg")
-    st.metric("Kağıt Maliyeti", f"{kagit_maliyeti:,.2f} ₺")
+    st.metric("Toplam Kilo (B14)", f"{toplam_kilo:.2f} kg")
+    st.metric("Kağıt Tutarı", f"{kagit_toplam_tutar:,.2f} ₺")
 
 st.markdown("---")
 
 # ==========================================
-# 🎨 BASKI
+# 🎨 2. BÖLÜM: BASKI HESABI (D5-F30)
 # ==========================================
-st.header("🎨 2. Baskı Maliyetleri")
+st.header("🎨 2. Baskı Hesabı (Karton & Metalize)")
 
-def baski_hesapla(tur, kalip, adet):
-    if kalip == 0: return 0
-    setup = 500 * kalip if kalip < 6 else 400 * kalip
-    tiraj = 0
-    if adet > 1000: tiraj = (adet - 1000) * 0.8
-    boya_miktari = (kagit_en * kagit_boy * 0.2 * adet) / 1000000
-    boya_fiyat = 17 * euro_kur if tur == "CMYK" else 28 * euro_kur
-    return setup + tiraj + (boya_miktari * boya_fiyat)
+# Ortak Girdiler
+col_baski_ebat1, col_baski_ebat2 = st.columns(2)
+with col_baski_ebat1:
+    baski_en = st.number_input("Baskı Ebadı En (E5)", value=70.0) # E5
+with col_baski_ebat2:
+    baski_boy = st.number_input("Baskı Ebadı Boy (F5)", value=100.0) # F5
 
-b1, b2, b3 = st.columns(3)
+# Ekranı İkiye Bölüyoruz: KARTON (E Sütunu) vs METALİZE (F Sütunu)
+col_karton, col_metalize = st.columns(2)
 
-with b1:
-    st.subheader("Ön Baskı")
-    if st.checkbox("Ön Baskı Var", value=True):
-        on_kalip = st.number_input("Ön Kalıp", 0, 10, 4)
-        on_tur = st.selectbox("Ön Tür", ["CMYK", "Special"])
-        on_maliyet = baski_hesapla(on_tur, on_kalip, tabaka_sayisi)
-    else: on_maliyet = 0
+# --- FONKSİYONLAR (Excel Formüllerinin Python Hali) ---
+def hesapla_baski_sayisi(evet_hayir, brut_tabaka):
+    return brut_tabaka if evet_hayir == "EVET" else 0
 
-with b2:
-    st.subheader("Arka Baskı")
-    if st.checkbox("Arka Baskı Var"):
-        arka_kalip = st.number_input("Arka Kalıp", 0, 10, 0)
-        arka_tur = st.selectbox("Arka Tür", ["CMYK", "Special"])
-        arka_maliyet = baski_hesapla(arka_tur, arka_kalip, tabaka_sayisi)
-    else: arka_maliyet = 0
+def hesapla_setup(evet_hayir, kalip_sayisi, tip="KARTON"):
+    if evet_hayir == "HAYIR":
+        return 0
+    # Karton Mantığı
+    if tip == "KARTON":
+        if 6 <= kalip_sayisi < 10: return 6000
+        else: return 3000
+    # Metalize Mantığı
+    else:
+        if 6 <= kalip_sayisi < 10: return 12000
+        else: return 6000
 
-with b3:
-    st.subheader("Ekstralar")
-    ekstra_maliyet = 0
-    if st.checkbox("U.V. Lak"):
-        lak_miktar = (kagit_en * kagit_boy * 0.7 * tabaka_sayisi) / 1000000
-        ekstra_maliyet += (lak_miktar * 8 * euro_kur) + 3000
-    if st.checkbox("Vernik"):
-        ver_miktar = (kagit_en * kagit_boy * 0.25 * tabaka_sayisi) / 1000000
-        ekstra_maliyet += 600 + (ver_miktar * 30 * dolar_kur * 1.2)
+def hesapla_tiraj(baski_sayisi, kalip_sayisi, tip="KARTON"):
+    if baski_sayisi <= 1000:
+        return 0
+    fark = baski_sayisi - 1000
+    if tip == "KARTON":
+        if 6 <= kalip_sayisi < 10: return fark * 0.8 * 2
+        else: return fark * 0.8
+    else: # Metalize
+        if 6 <= kalip_sayisi < 10: return fark * 1.3 * 2
+        else: return fark * 1.3
 
-baski_toplam = on_maliyet + arka_maliyet + ekstra_maliyet
-st.info(f"Baskı Toplam: **{baski_toplam:,.2f} ₺**")
+# ==========================================
+# 🟫 KARTON BASKI (E SÜTUNU)
+# ==========================================
+with col_karton:
+    st.subheader("🟫 Karton Baskı (E)")
+    
+    # Girdiler
+    e_on_baski = st.selectbox("Ön Baskı (E7)", ["EVET", "HAYIR"], index=0)
+    e_arka_baski = st.selectbox("Arka Baskı (E8)", ["EVET", "HAYIR"], index=1)
+    e_boya_turu = st.selectbox("Boya Türü (E9)", ["CMYK", "PANTONE"])
+    e_on_kalip = st.number_input("Ön Kalıp Adedi (D10)", value=4)
+    e_arka_kalip = st.number_input("Arka Kalıp Adedi (E11)", value=0)
+    
+    e_vernik = st.selectbox("Vernik (E12)", ["EVET", "HAYIR"], index=1)
+    e_uv = st.selectbox("UV Lak (E13)", ["EVET", "HAYIR"], index=1)
+    e_disp = st.selectbox("Dispersiyon (E14)", ["EVET", "HAYIR"], index=1)
+    e_kaucuk = st.selectbox("Kauçuk (E15)", ["EVET", "HAYIR"], index=1)
+
+    # --- HESAPLAMALAR (Sırayla) ---
+    
+    # 1. Baskı Sayıları (E16, E17)
+    e_on_sayi = hesapla_baski_sayisi(e_on_baski, baski_brut)
+    e_arka_sayi = hesapla_baski_sayisi(e_arka_baski, baski_brut)
+    
+    # 2. Setup (E18, E19)
+    e_on_setup = hesapla_setup(e_on_baski, e_on_kalip, "KARTON")
+    e_arka_setup = hesapla_setup(e_arka_baski, e_arka_kalip, "KARTON")
+    
+    # 3. Tiraj (E20, E21)
+    e_on_tiraj = hesapla_tiraj(e_on_sayi, e_on_kalip, "KARTON")
+    e_arka_tiraj = hesapla_tiraj(e_arka_sayi, e_arka_kalip, "KARTON")
+    
+    # 4. Miktarlar (E25, E26, E27)
+    # E27 Boya Miktarı: E5*F5*0,2*E16/1000000
+    e_boya_mik = (baski_en * baski_boy * 0.2 * e_on_sayi) / 1000000
+    # E26 Vernik Miktarı: E5*F5*0,25*E16/1000000 (Eğer EVET ise)
+    e_vernik_mik = (baski_en * baski_boy * 0.25 * e_on_sayi) / 1000000 if e_vernik == "EVET" else 0
+    # E25 UV Lak Miktarı: E5*F5*0,7*E16/1000000 (Eğer EVET ise)
+    e_uv_mik = (baski_en * baski_boy * 0.7 * e_on_sayi) / 1000000 if e_uv == "EVET" else 0
+    
+    # 5. Fiyatlar (Maliyetler)
+    # E28 Tüketilen Mürekkep: CMYK ise *17*S4, değilse *28*S4
+    e_murekkep_fiyat = (e_boya_mik * 17 * euro_kur) if e_boya_turu == "CMYK" else (e_boya_mik * 28 * euro_kur)
+    
+    # E22 Vernik Geçiş: 600+(E26*30*S3)*1,2
+    e_vernik_gecis = (600 + (e_vernik_mik * 30 * dolar_kur) * 1.2) if e_vernik == "EVET" else 0
+    
+    # E29 UV Lak Fiyatı: E25*8*S4+3000
+    e_uv_fiyat = (e_uv_mik * 8 * euro_kur + 3000) if e_uv == "EVET" else 0
+    
+    # E23 Dispersiyon: 1500 + KağıtAlan * KağıtAdet * 4 / 10m * 3 * S4 * 3
+    # Not: Formül B5*C5*B9 kullanıyor.
+    e_disp_fiyat = (1500 + (kagit_en * kagit_boy * baski_brut * 4 / 10000000 * 3 * euro_kur * 3)) if e_disp == "EVET" else 0
+    
+    # E24 Kauçuk: 3000
+    e_kaucuk_fiyat = 3000 if e_kaucuk == "EVET" else 0
+
+    # 6. TOPLAM (E30)
+    e_toplam = e_on_setup + e_arka_setup + e_on_tiraj + e_arka_tiraj + e_vernik_gecis + e_disp_fiyat + e_kaucuk_fiyat + e_murekkep_fiyat + e_uv_fiyat
+
+    st.info(f"Karton Toplam (E30): {e_toplam:,.2f} ₺")
+    with st.expander("Detaylar"):
+        st.write(f"Ön Setup: {e_on_setup}")
+        st.write(f"Ön Tiraj: {e_on_tiraj:.2f}")
+        st.write(f"Mürekkep: {e_murekkep_fiyat:.2f}")
+        st.write(f"UV Fiyat: {e_uv_fiyat:.2f}")
+
+# ==========================================
+# ⬜ METALİZE BASKI (F SÜTUNU)
+# ==========================================
+with col_metalize:
+    st.subheader("⬜ Metalize Baskı (F)")
+    
+    # Girdiler
+    f_on_baski = st.selectbox("Ön Baskı (F7)", ["EVET", "HAYIR"], index=1)
+    f_arka_baski = st.selectbox("Arka Baskı (F8)", ["EVET", "HAYIR"], index=1)
+    f_boya_turu = st.selectbox("Boya Türü (F9)", ["CMYK", "PANTONE"])
+    f_on_kalip = st.number_input("Ön Kalıp Adedi (F10)", value=0)
+    f_arka_kalip = st.number_input("Arka Kalıp Adedi (F11)", value=0)
+    
+    f_vernik = st.selectbox("Vernik (F12)", ["EVET", "HAYIR"], index=1)
+    f_uv = st.selectbox("UV Lak (F13)", ["EVET", "HAYIR"], index=1)
+    f_disp = st.selectbox("Dispersiyon (F14)", ["EVET", "HAYIR"], index=1)
+    f_kaucuk = st.selectbox("Kauçuk (F15)", ["EVET", "HAYIR"], index=1)
+
+    # --- HESAPLAMALAR ---
+    
+    # 1. Baskı Sayıları
+    f_on_sayi = hesapla_baski_sayisi(f_on_baski, baski_brut)
+    f_arka_sayi = hesapla_baski_sayisi(f_arka_baski, baski_brut)
+    
+    # 2. Setup
+    f_on_setup = hesapla_setup(f_on_baski, f_on_kalip, "METALIZE")
+    f_arka_setup = hesapla_setup(f_arka_baski, f_arka_kalip, "METALIZE")
+    
+    # 3. Tiraj
+    f_on_tiraj = hesapla_tiraj(f_on_sayi, f_on_kalip, "METALIZE")
+    f_arka_tiraj = hesapla_tiraj(f_arka_sayi, f_arka_kalip, "METALIZE")
+    
+    # 4. Miktarlar
+    f_boya_mik = (baski_en * baski_boy * 0.2 * f_on_sayi) / 1000000
+    f_vernik_mik = (baski_en * baski_boy * 0.25 * f_on_sayi) / 1000000 if f_vernik == "EVET" else 0
+    f_uv_mik = (baski_en * baski_boy * 0.7 * f_on_sayi) / 1000000 if f_uv == "EVET" else 0
+    
+    # 5. Fiyatlar
+    # Not: Q4 yerine Euro kuru (S4) kullandık.
+    f_murekkep_fiyat = (f_boya_mik * 17 * euro_kur) if f_boya_turu == "CMYK" else (f_boya_mik * 28 * euro_kur)
+    
+    f_vernik_gecis = (600 + (f_vernik_mik * 30 * dolar_kur) * 1.2) if f_vernik == "EVET" else 0
+    f_uv_fiyat = (f_uv_mik * 8 * euro_kur + 3000) if f_uv == "EVET" else 0
+    
+    # Dispersiyon Metalize: 1500+C5*D5*C8*4/10000000*3*Q4*3
+    # Formülde C5, D5, C8 kullanılmış. Bu muhtemelen kağıt ebat ve brüt kağıt.
+    # Bizim değişkenlerimizde: kagit_en, kagit_boy, kagit_brut.
+    f_disp_fiyat = (1500 + (kagit_en * kagit_boy * kagit_brut * 4 / 10000000 * 3 * euro_kur * 3)) if f_disp == "EVET" else 0
+    
+    f_kaucuk_fiyat = 3000 if f_kaucuk == "EVET" else 0
+
+    # 6. TOPLAM (F30)
+    f_toplam = f_on_setup + f_arka_setup + f_on_tiraj + f_arka_tiraj + f_vernik_gecis + f_disp_fiyat + f_kaucuk_fiyat + f_murekkep_fiyat + f_uv_fiyat
+
+    st.info(f"Metalize Toplam (F30): {f_toplam:,.2f} ₺")
+    with st.expander("Detaylar"):
+        st.write(f"Ön Setup: {f_on_setup}")
+        st.write(f"Ön Tiraj: {f_on_tiraj:.2f}")
+        st.write(f"Mürekkep: {f_murekkep_fiyat:.2f}")
 
 st.markdown("---")
 
 # ==========================================
-# ✨ DIŞ İŞLEMLER
+# 💰 GENEL SONUÇ
 # ==========================================
-st.header("✨ 3. Dış İşlemler")
-d1, d2, d3 = st.columns(3)
+st.header("💰 Genel Toplam")
+genel_toplam = kagit_toplam_tutar + e_toplam + f_toplam
 
-with d1:
-    st.subheader("Selefon")
-    sel_tip = st.selectbox("Selefon Türü", ["YOK", "SÜPER PARLAK", "SÜPER MAT", "SÜPER METALİZE", "TEKNİK MAT", "ÇİZİLMEZ"])
-    sel_fiyat = 0
-    if sel_tip != "YOK":
-        fiyatlar = {"Süper Parlak": 0.10, "Süper Mat": 0.11, "Süper Metalize": 0.18, "Teknik Mat": 0.14, "Çizilmez": 0.42}
-        sel_fiyat = (kagit_en * kagit_boy / 10000) * tabaka_sayisi * fiyatlar.get(sel_tip, 0.1) * dolar_kur
-    st.write(f"Tutar: {sel_fiyat:,.2f} ₺")
-
-with d2:
-    st.subheader("Yaldız")
-    yaldiz_fiyat = 0
-    if st.checkbox("Yaldız Ekle"):
-        y_en = st.number_input("Yaldız En", 10.0)
-        y_boy = st.number_input("Yaldız Boy", 5.0)
-        y_adet = st.number_input("Vuruş Adedi", value=tabaka_sayisi)
-        y_setup = 2000 if y_adet <= 1000 else 2000 + (y_adet - 1000) * 0.8
-        y_sarf = (y_en/100)*(y_boy/100)*y_adet*0.185*dolar_kur
-        y_klise = y_en*y_boy*5.5
-        yaldiz_fiyat = y_setup + y_sarf + y_klise
-    st.write(f"Tutar: {yaldiz_fiyat:,.2f} ₺")
-
-with d3:
-    st.subheader("Sıvama")
-    ond_tip = st.selectbox("Sıvama Türü", ["YOK", "TEK YÜZ ONDÜLE", "LWC+ONDÜLE", "ÇİFT YÜZ ONDÜLE"])
-    sivama_fiyat = 0
-    if ond_tip != "YOK":
-        carpan = {"TEK YÜZ ONDÜLE": 3.3, "LWC+ONDÜLE": 3.8, "ÇİFT YÜZ ONDÜLE": 5.0}.get(ond_tip, 0)
-        sivama_fiyat = (kagit_en/100)*(kagit_boy/100)*tabaka_sayisi*carpan
-    st.write(f"Tutar: {sivama_fiyat:,.2f} ₺")
-
-st.markdown("---")
-
-# ==========================================
-# ✂️ KESİM VE YAPIŞTIRMA
-# ==========================================
-st.header("✂️ 4. Kesim ve Yapıştırma")
-s1, s2 = st.columns(2)
-
-with s1:
-    kesim_tip = st.selectbox("Kesim", ["YOK", "BOBST", "GOFRELİ", "SIVAMALI", "AYIKLAMALI"])
-    kesim_fiyat = 0
-    if kesim_tip != "YOK":
-        taban = {"BOBST": 2500, "GOFRELİ": 3000, "SIVAMALI": 3000, "AYIKLAMALI": 4500}.get(kesim_tip, 0)
-        ek = {"BOBST": 0.75, "GOFRELİ": 0.80, "SIVAMALI": 1.50, "AYIKLAMALI": 0.85}.get(kesim_tip, 0)
-        kesim_fiyat = taban if tabaka_sayisi <= 2000 else taban + (tabaka_sayisi - 2000) * ek
-    st.success(f"Kesim: {kesim_fiyat:,.2f} ₺")
-
-with s2:
-    yap_tip = st.selectbox("Yapıştırma", ["YOK", "YAN", "ALT-YAN", "4 NOKTA", "6 NOKTA"])
-    yap_fiyat = 0
-    if yap_tip != "YOK":
-        ytaban = {"YAN": 600, "ALT-YAN": 700, "4 NOKTA": 900, "6 NOKTA": 1100}.get(yap_tip, 0)
-        yek = {"YAN": 0.03, "ALT-YAN": 0.04, "4 NOKTA": 0.07, "6 NOKTA": 0.09}.get(yap_tip, 0)
-        yap_fiyat = ytaban if tabaka_sayisi <= 5000 else ytaban + (tabaka_sayisi - 5000) * yek
-    st.success(f"Yapıştırma: {yap_fiyat:,.2f} ₺")
-
-st.markdown("---")
-
-# ==========================================
-# 📊 FİNAL
-# ==========================================
-st.header("📊 TEKLİF")
-dis_toplam = kagit_maliyeti + sel_fiyat + yaldiz_fiyat + sivama_fiyat
-ic_toplam = baski_toplam + kesim_fiyat + yap_fiyat
-genel_toplam = dis_toplam + ic_toplam
-
-satis_toplam = genel_toplam * (1 + kar_orani / 100)
-birim_satis = satis_toplam / siparis_adedi
-
-final_toplam = 0
-final_birim = 0
-simge = "₺"
-
-if teklif_para_birimi == "DOLAR":
-    final_toplam = satis_toplam / dolar_kur
-    final_birim = birim_satis / dolar_kur
-    simge = "$"
-elif teklif_para_birimi == "EURO":
-    final_toplam = satis_toplam / euro_kur
-    final_birim = birim_satis / euro_kur
-    simge = "€"
-else:
-    final_toplam = satis_toplam
-    final_birim = birim_satis
-    simge = "₺"
-
-f1, f2 = st.columns(2)
-with f1:
-    st.write(f"Dış Maliyet: {dis_toplam:,.2f} ₺")
-    st.write(f"İç Maliyet: {ic_toplam:,.2f} ₺")
-    st.write(f"**TOPLAM MALİYET: {genel_toplam:,.2f} ₺**")
-with f2:
-    st.metric("TOPLAM FİYAT", f"{final_toplam:,.2f} {simge}")
-    st.metric("ADET BAŞI", f"{final_birim:,.3f} {simge}")
+col_res1, col_res2 = st.columns(2)
+with col_res1:
+    st.write(f"Kağıt Maliyeti: {kagit_toplam_tutar:,.2f} ₺")
+    st.write(f"Karton Baskı Maliyeti: {e_toplam:,.2f} ₺")
+    st.write(f"Metalize Baskı Maliyeti: {f_toplam:,.2f} ₺")
+with col_res2:
+    st.metric("TOPLAM MALİYET", f"{genel_toplam:,.2f} ₺")
+    st.metric("BİRİM MALİYET", f"{genel_toplam/siparis_adedi:,.2f} ₺")
